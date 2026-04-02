@@ -3,7 +3,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 
 from app.db.session import Base
-
+from app.utils.logger import logger
 
 # Roles Table
 class Role(Base):
@@ -14,6 +14,7 @@ class Role(Base):
 
     users = relationship("User", back_populates="role")
 
+    logger.info(f"{__tablename__} created.")
 
 # Users Table
 class User(Base):
@@ -31,6 +32,8 @@ class User(Base):
 
     role = relationship("Role", back_populates="users")
     records = relationship("FinancialRecord", back_populates="user")
+
+    logger.info(f"{__tablename__} created.")
 
 
 # Financial Records Table
@@ -51,3 +54,5 @@ class FinancialRecord(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="records")
+
+    logger.info(f"{__tablename__} created.")
