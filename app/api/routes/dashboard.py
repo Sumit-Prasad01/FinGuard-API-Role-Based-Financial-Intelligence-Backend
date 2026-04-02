@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -10,12 +10,19 @@ from app.services.dashboard_service import (
 )
 from app.schemas.dashboard import DashboardResponse
 
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
+limiter = Limiter(key_func=get_remote_address)
+
 
 @router.get("/", response_model=DashboardResponse)
+@limiter.limit("20/minute")   
 async def get_dashboard(
+    request: Request,          
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user)
 ):

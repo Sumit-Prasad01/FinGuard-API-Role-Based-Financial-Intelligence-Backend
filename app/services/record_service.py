@@ -1,4 +1,5 @@
-from sqlalchemy.orm import Session
+from sqlalchemy import select, or_
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 from typing import Optional
 from datetime import datetime
@@ -7,7 +8,7 @@ from app.db.models import FinancialRecord
 from app.schemas.record import RecordCreate, RecordUpdate
 
 
-def create_record(db: Session, user_id: int, record_data: RecordCreate):
+async def create_record(db: AsyncSession, user_id: int, record_data: RecordCreate):
     new_record = FinancialRecord(
         user_id=user_id,
         amount=record_data.amount,
@@ -18,42 +19,65 @@ def create_record(db: Session, user_id: int, record_data: RecordCreate):
     )
 
     db.add(new_record)
-    db.commit()
-    db.refresh(new_record)
+    await db.commit()
+    await db.refresh(new_record)
 
     return new_record
 
 
-def get_records(
-    db: Session,
+
+async def get_records(
+    db: AsyncSession,
     user_id: int,
-    start_date: Optional[datetime] = None,
-    end_date: Optional[datetime] = None,
-    category: Optional[str] = None,
-    type: Optional[str] = None,
+    start_date=None,
+    end_date=None,
+    category=None,
+    type=None,
+    search=None,
+    limit: int = 10,
+    offset: int = 0,
 ):
-    query = db.query(FinancialRecord).filter(FinancialRecord.user_id == user_id)
+    query = select(FinancialRecord).where(FinancialRecord.user_id == user_id)
 
     if start_date:
-        query = query.filter(FinancialRecord.date >= start_date)
+        query = query.where(FinancialRecord.date >= start_date)
 
     if end_date:
-        query = query.filter(FinancialRecord.date <= end_date)
+        query = query.where(FinancialRecord.date <= end_date)
 
     if category:
-        query = query.filter(FinancialRecord.category == category)
+        query = query.where(FinancialRecord.category == category)
 
     if type:
-        query = query.filter(FinancialRecord.type == type)
+        query = query.where(FinancialRecord.type == type)
 
-    return query.all()
+    if search:
+        query = query.where(
+            or_(
+                FinancialRecord.category.ilike(f"%{search}%"),
+                FinancialRecord.notes.ilike(f"%{search}%")
+            )
+        )
+
+    query = query.limit(limit).offset(offset)
+
+    result = await db.execute(query)
+    return result.scalars().all()
 
 
-def update_record(db: Session, record_id: int, user_id: int, record_data: RecordUpdate):
-    record = db.query(FinancialRecord).filter(
-        FinancialRecord.id == record_id,
-        FinancialRecord.user_id == user_id
-    ).first()
+async def update_record(
+    db: AsyncSession,
+    record_id: int,
+    user_id: int,
+    record_data: RecordUpdate
+):
+    result = await db.execute(
+        select(FinancialRecord).where(
+            FinancialRecord.id == record_id,
+            FinancialRecord.user_id == user_id
+        )
+    )
+    record = result.scalar_one_or_none()
 
     if not record:
         raise HTTPException(
@@ -61,20 +85,23 @@ def update_record(db: Session, record_id: int, user_id: int, record_data: Record
             detail="Record not found"
         )
 
-    for key, value in record_data.dict(exclude_unset=True).items():
+    for key, value in record_data.model_dump(exclude_unset=True).items():
         setattr(record, key, value)
 
-    db.commit()
-    db.refresh(record)
+    await db.commit()
+    await db.refresh(record)
 
     return record
 
 
-def delete_record(db: Session, record_id: int, user_id: int):
-    record = db.query(FinancialRecord).filter(
-        FinancialRecord.id == record_id,
-        FinancialRecord.user_id == user_id
-    ).first()
+async def delete_record(db: AsyncSession, record_id: int, user_id: int):
+    result = await db.execute(
+        select(FinancialRecord).where(
+            FinancialRecord.id == record_id,
+            FinancialRecord.user_id == user_id
+        )
+    )
+    record = result.scalar_one_or_none()
 
     if not record:
         raise HTTPException(
@@ -82,7 +109,7 @@ def delete_record(db: Session, record_id: int, user_id: int):
             detail="Record not found"
         )
 
-    db.delete(record)
-    db.commit()
+    await db.delete(record)
+    await db.commit()
 
     return {"message": "Record deleted successfully"}

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from datetime import datetime
@@ -13,8 +13,13 @@ from app.services.record_service import (
 )
 from app.dependencies.auth import get_current_user
 
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
 
 router = APIRouter(prefix="/records", tags=["Records"])
+
+limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/", response_model=RecordResponse)
@@ -27,11 +32,18 @@ async def create_record_api(
 
 
 @router.get("/", response_model=List[RecordResponse])
+@limiter.limit("50/minute")   
 async def get_records_api(
+    request: Request,          
     start_date: Optional[datetime] = Query(None),
     end_date: Optional[datetime] = Query(None),
     category: Optional[str] = Query(None),
     type: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
@@ -41,7 +53,10 @@ async def get_records_api(
         start_date,
         end_date,
         category,
-        type
+        type,
+        search,
+        limit,
+        offset
     )
 
 

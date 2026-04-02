@@ -51,6 +51,9 @@ list_of_files = [
     "app/dependencies/auth.py",
     "app/dependencies/roles.py",
 
+    # MIDDLEWARES(LOGGING)
+    "app/middlewares/__init__.py",
+    "app/middlewares/logging.py",
 
     # UTILS
     "app/utils/__init__.py",

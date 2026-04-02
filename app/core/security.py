@@ -50,3 +50,27 @@ def decode_access_token(token: str):
         return payload
     except JWTError:
         return None
+    
+# Create refresh token
+def create_refresh_token(data: dict):
+    expire = datetime.utcnow() + timedelta(days=7)
+    to_encode = data.copy()
+    to_encode.update({"exp": expire})
+
+    return jwt.encode(
+        to_encode,
+        settings.SECRET_KEY,
+        algorithm=settings.ALGORITHM
+    )
+
+# Verify refresh token
+def verify_refresh_token(token: str):
+    try:
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM]
+        )
+        return payload
+    except JWTError:
+        return None

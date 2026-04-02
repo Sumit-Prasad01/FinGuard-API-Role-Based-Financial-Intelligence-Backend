@@ -1,4 +1,5 @@
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 
 from app.db.models import User
@@ -6,9 +7,13 @@ from app.schemas.user import UserCreate
 from app.core.security import get_password_hash
 
 
-def create_user(db: Session, user_data: UserCreate):
+async def create_user(db: AsyncSession, user_data: UserCreate):
     # Check if user already exists
-    existing_user = db.query(User).filter(User.email == user_data.email).first()
+    result = await db.execute(
+        select(User).where(User.email == user_data.email)
+    )
+    existing_user = result.scalar_one_or_none()
+
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -24,21 +29,27 @@ def create_user(db: Session, user_data: UserCreate):
     )
 
     db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
+    await db.commit()
+    await db.refresh(new_user)
 
     return new_user
 
 
-def get_users(db: Session):
-    return db.query(User).all()
+async def get_users(db: AsyncSession):
+    result = await db.execute(select(User))
+    return result.scalars().all()
 
 
-def get_user_by_id(db: Session, user_id: int):
-    user = db.query(User).filter(User.id == user_id).first()
+async def get_user_by_id(db: AsyncSession, user_id: int):
+    result = await db.execute(
+        select(User).where(User.id == user_id)
+    )
+    user = result.scalar_one_or_none()
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
+
     return user

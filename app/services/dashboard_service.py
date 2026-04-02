@@ -1,19 +1,25 @@
-from sqlalchemy.orm import Session
-from sqlalchemy import func, extract
+from sqlalchemy import func, extract, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import FinancialRecord
 
 
-def get_summary(db: Session, user_id: int):
-    total_income = db.query(func.sum(FinancialRecord.amount)).filter(
-        FinancialRecord.user_id == user_id,
-        FinancialRecord.type == "income"
-    ).scalar() or 0
+async def get_summary(db: AsyncSession, user_id: int):
+    income_result = await db.execute(
+        select(func.sum(FinancialRecord.amount)).where(
+            FinancialRecord.user_id == user_id,
+            FinancialRecord.type == "income"
+        )
+    )
+    total_income = income_result.scalar() or 0
 
-    total_expense = db.query(func.sum(FinancialRecord.amount)).filter(
-        FinancialRecord.user_id == user_id,
-        FinancialRecord.type == "expense"
-    ).scalar() or 0
+    expense_result = await db.execute(
+        select(func.sum(FinancialRecord.amount)).where(
+            FinancialRecord.user_id == user_id,
+            FinancialRecord.type == "expense"
+        )
+    )
+    total_expense = expense_result.scalar() or 0
 
     return {
         "total_income": total_income,
@@ -22,32 +28,40 @@ def get_summary(db: Session, user_id: int):
     }
 
 
-def get_category_breakdown(db: Session, user_id: int):
-    results = db.query(
-        FinancialRecord.category,
-        func.sum(FinancialRecord.amount).label("total")
-    ).filter(
-        FinancialRecord.user_id == user_id
-    ).group_by(FinancialRecord.category).all()
+async def get_category_breakdown(db: AsyncSession, user_id: int):
+    result = await db.execute(
+        select(
+            FinancialRecord.category,
+            func.sum(FinancialRecord.amount).label("total")
+        )
+        .where(FinancialRecord.user_id == user_id)
+        .group_by(FinancialRecord.category)
+    )
+
+    rows = result.all()
 
     return [
         {"category": r.category, "total": r.total}
-        for r in results
+        for r in rows
     ]
 
 
-def get_monthly_trends(db: Session, user_id: int):
-    results = db.query(
-        extract("month", FinancialRecord.date).label("month"),
-        FinancialRecord.type,
-        func.sum(FinancialRecord.amount).label("total")
-    ).filter(
-        FinancialRecord.user_id == user_id
-    ).group_by("month", FinancialRecord.type).all()
+async def get_monthly_trends(db: AsyncSession, user_id: int):
+    result = await db.execute(
+        select(
+            extract("month", FinancialRecord.date).label("month"),
+            FinancialRecord.type,
+            func.sum(FinancialRecord.amount).label("total")
+        )
+        .where(FinancialRecord.user_id == user_id)
+        .group_by("month", FinancialRecord.type)
+    )
+
+    rows = result.all()
 
     trends = {}
 
-    for r in results:
+    for r in rows:
         month = int(r.month)
         if month not in trends:
             trends[month] = {"income": 0, "expense": 0}
