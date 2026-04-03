@@ -2,7 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 
-from app.db.models import User
+from app.db.models import User, Role
 from app.schemas.user import UserCreate
 from app.core.security import get_password_hash
 
@@ -19,13 +19,19 @@ async def create_user(db: AsyncSession, user_data: UserCreate):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
+    
+    # Assign default role(Viewer)
+    role_result = await db.execute(
+        select(Role).where(Role.name == "viewer")
+    )
+    role = role_result.scalar_one()
 
     # Create new user
     new_user = User(
         name=user_data.name,
         email=user_data.email,
         password=get_password_hash(user_data.password),
-        role_id=user_data.role_id,
+        role_id=role.id,
     )
 
     db.add(new_user)

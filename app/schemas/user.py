@@ -8,8 +8,9 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
+    name: str
+    email: EmailStr
     password: str
-    role_id: int
 
 
 class UserResponse(UserBase):

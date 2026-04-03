@@ -2,9 +2,17 @@ from sqlalchemy import func, extract, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import FinancialRecord
+from app.cache.redis_client import get_cache, set_cache
 
 
 async def get_summary(db: AsyncSession, user_id: int):
+    cache_key = f"summary:{user_id}"
+
+    cached = get_cache(cache_key)
+    if cached:
+        return cached
+
+    # DB Query
     income_result = await db.execute(
         select(func.sum(FinancialRecord.amount)).where(
             FinancialRecord.user_id == user_id,
@@ -21,11 +29,15 @@ async def get_summary(db: AsyncSession, user_id: int):
     )
     total_expense = expense_result.scalar() or 0
 
-    return {
+    result =  {
         "total_income": total_income,
         "total_expense": total_expense,
         "net_balance": total_income - total_expense
     }
+
+    set_cache(cache_key, result)
+
+    return result
 
 
 async def get_category_breakdown(db: AsyncSession, user_id: int):

@@ -1,41 +1,39 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.db.session import get_db
 from app.db.models import User
 from app.core.security import decode_access_token
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
-def get_current_user(
+async def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     payload = decode_access_token(token)
 
     if payload is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token"
-        )
+        raise HTTPException(status_code=401, detail="Invalid token")
 
-    user_id: int = payload.get("sub")
+    user_id = payload.get("sub")
 
     if user_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token payload"
-        )
+        raise HTTPException(status_code=401, detail="Invalid token payload")
 
-    user = db.query(User).filter(User.id == user_id).first()
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.role))  
+        .where(User.id == int(user_id))
+    )
+    user = result.scalar_one_or_none()
 
     if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
+        raise HTTPException(status_code=404, detail="User not found")
 
     return user

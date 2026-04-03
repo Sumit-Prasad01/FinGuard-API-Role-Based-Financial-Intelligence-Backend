@@ -59,6 +59,9 @@ list_of_files = [
     "app/utils/__init__.py",
     "app/utils/logger.py",
 
+    # CACHE
+    "app/cache/__init__.py",
+    "app/cache/redis_client.py",
 
     # TESTS
     "tests/__init__.py",

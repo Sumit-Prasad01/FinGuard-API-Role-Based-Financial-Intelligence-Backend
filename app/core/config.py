@@ -11,6 +11,7 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: str = os.getenv("DATABASE_URL")
+    REDIS_URL : str = os.getenv("REDIS_URL")
 
     class Config:
         env_file = ".env"

@@ -1,4 +1,3 @@
-import uvicorn
 from fastapi import FastAPI
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -50,6 +49,3 @@ async def root():
     return {"message": "FinGuard API is running 🚀"}
 
 
-# Run Server
-if __name__ == "__main__":
-    uvicorn.run("app.main:app", host="127.0.0.1", port=8000)
