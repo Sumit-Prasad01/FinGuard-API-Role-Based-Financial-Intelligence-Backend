@@ -5,11 +5,13 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - .env   
+      - .env
     environment:
-      - REDIS_URL=redis://redis:6379  # override/add Redis
+      - REDIS_URL=redis://redis:6379
     depends_on:
       - redis
+    volumes:
+      - ./fin_guard.db:/app/fin_guard.db   
     networks:
       - backend
 
