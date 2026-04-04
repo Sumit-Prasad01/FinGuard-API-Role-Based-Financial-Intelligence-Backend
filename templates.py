@@ -16,6 +16,7 @@ list_of_files = [
     "app/core/__init__.py",
     "app/core/config.py",
     "app/core/security.py",
+    "app/core/exceptions.py",
 
     # DATABASE
     "app/db/__init__.py",
@@ -78,6 +79,9 @@ list_of_files = [
     # DOCKER
     "dockerfile",
     "docker-compose.yml",
+
+    # PROMETHEUS
+    "prometheus.yml"
 
 ]
 

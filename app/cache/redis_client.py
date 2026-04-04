@@ -2,7 +2,7 @@ import redis
 import json
 from app.core.config import settings
 
-redis_client = redis.Redis(settings.REDIS_URL, decode_responses = True)
+redis_client = redis.StrictRedis.from_url(settings.REDIS_URL, decode_responses = True)
 
 def get_cache(key : str):
     data  = redis_client.get(key)

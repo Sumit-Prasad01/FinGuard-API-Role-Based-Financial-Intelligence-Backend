@@ -3,6 +3,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.core.config import settings
 from app.db.session import engine, Base, get_db
@@ -10,7 +11,7 @@ from app.db.init_db import seed_roles
 
 from app.api.routes import auth, users, records, dashboard
 from app.middlewares.logging import LoggingMiddleware
-
+from app.core.exceptions import register_exception_handlers
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
@@ -42,6 +43,11 @@ app.include_router(users.router)
 app.include_router(records.router)
 app.include_router(dashboard.router)
 
+# Monitoring using prometheus
+Instrumentator().instrument(app).expose(app)
+
+# Add exception handler
+register_exception_handlers(app)
 
 # Root Endpoint
 @app.get("/")

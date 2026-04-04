@@ -16,3 +16,4 @@ setuptools
 slowapi
 redis
 bcrypt==4.0.1
+prometheus-fastapi-instrumentator
